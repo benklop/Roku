@@ -100,15 +100,35 @@ namespace household
         if isValid(server.url) then reg.write("serverUrl", LCase(server.url))
         reg.write("token", result.accessToken)
         reg.write("username", name)
-        return reg.flush()
+        if not reg.flush() then return false
+
+        household.AddToAvailableUsers(result.userId, name, server.url ?? "")
+        return true
     end function
 
+    ' Lists the account in Switch User, the same way UserData.saveToRegistry does after a sign-in
+    sub AddToAvailableUsers(userId as string, name as string, serverUrl as string)
+        users = ParseJson(get_setting("available_users", "[]"))
+        if type(users) <> "roArray" then users = []
+
+        for each user in users
+            if isValid(user) and isStringEqual(user.id, userId) then return
+        end for
+
+        users.push({ id: userId, username: name, server: serverUrl })
+        set_setting("available_users", FormatJson(users))
+    end sub
+
+    ' Names as a sentence lists them: "A", "A and B", "A, B and C"
     function JoinNames(users as object) as string
         names = []
         for each user in users
             if isValidAndNotEmpty(user.name) then names.push(user.name)
         end for
-        return names.join(", ")
+
+        if names.count() < 2 then return names.join("")
+        last = names.pop()
+        return Substitute(tr("{0} and {1}"), names.join(", "), last)
     end function
 
 end namespace

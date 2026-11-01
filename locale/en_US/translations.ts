@@ -3448,6 +3448,11 @@
         <translation>{0} day streak</translation>
     </message>
     <message>
+        <source>{0} and {1}</source>
+        <extracomment>The end of a list of names, where {0} is every name but the last, already joined with commas</extracomment>
+        <translation>{0} and {1}</translation>
+    </message>
+    <message>
         <source>{0} of {1} badges</source>
         <extracomment>How many badges of a set are unlocked</extracomment>
         <translation>{0} of {1} badges</translation>
