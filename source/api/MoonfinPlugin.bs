@@ -55,6 +55,29 @@ namespace moonfinPlugin
         return getJson(req)
     end function
 
+    ' The household accounts the signed in user manages, or invalid when the plugin is too old to
+    ' have households. Someone who manages nothing gets isManager false and no users.
+    function Household() as object
+        req = APIRequest("/Moonfin/Household")
+        if not isValid(req) then return invalid
+
+        result = getJson(req)
+        if not isValid(result) or type(result) <> "roAssociativeArray" then return invalid
+        return result
+    end function
+
+    ' Signs household accounts in on this Roku and returns a result for each, with its token when
+    ' that worked. The server binds the tokens to this device and hands back one an account
+    ' already has here rather than minting another.
+    function HouseholdSessions(userIds as object) as object
+        req = APIRequest("/Moonfin/Household/Sessions")
+        if not isValid(req) then return invalid
+
+        result = postJson(req, FormatJson({ userIds: userIds }))
+        if not isValid(result) or type(result) <> "roAssociativeArray" then return invalid
+        return result
+    end function
+
     ' What the server calls its Seerr instance, so a fork is named as it is configured
     function SeerrDisplayName() as string
         req = APIRequest("/Moonfin/Seerr/Config")

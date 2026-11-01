@@ -1,0 +1,114 @@
+import "pkg:/source/api/MoonfinPlugin.bs"
+import "pkg:/source/utils/config.bs"
+import "pkg:/source/utils/misc.bs"
+import "pkg:/source/utils/serverCompatibility.bs"
+
+' Set on the manager's account when they choose not to be asked again
+const HOUSEHOLD_DONT_OFFER_KEY = "household.dontOffer"
+
+' Household setup: when someone who manages a household on the server's Moonfin plugin signs in
+' on this Roku by hand, the app offers to add the rest of the household too, so each person can
+' pick their own account from Who's watching without signing in.
+namespace household
+
+    ' Asks the manager whether to add their household, and adds it. Does nothing for anyone who
+    ' manages no household, on a server whose plugin can't add one, or when this Roku doesn't
+    ' keep sign-ins.
+    sub OfferSetup()
+        if isEmbyServer() or isPlexServer() then return
+        if not should_save_credentials() then return
+        if get_user_setting(HOUSEHOLD_DONT_OFFER_KEY) = "true" then return
+
+        info = moonfinPlugin.Household()
+        if not isValid(info) or info.isManager <> true or info.sessionsSupported <> true then return
+
+        missing = household.MissingHere(info.users)
+        if missing.count() = 0 then return
+
+        message = Substitute(tr("You manage {0}. Add them to this Roku so they can pick their own account without signing in?"), household.JoinNames(missing))
+        choice = show_dialog(message, [tr("Add Them"), tr("Not Now"), tr("Don't Ask Again")], 0)
+        if choice = 2 then set_user_setting(HOUSEHOLD_DONT_OFFER_KEY, "true")
+        if choice <> 0 then return
+
+        ids = []
+        for each user in missing
+            ids.push(user.id)
+        end for
+
+        startLoadingSpinner()
+        answer = moonfinPlugin.HouseholdSessions(ids)
+        stopLoadingSpinner()
+
+        if not isValid(answer) or not isValid(answer.results)
+            show_dialog(tr("Couldn't add your household to this Roku. Try again the next time you sign in."), [tr("OK")], 0)
+            return
+        end if
+
+        added = []
+        failed = []
+        for each result in answer.results
+            if result.success = true and household.SaveAccount(result)
+                added.push(result)
+            else
+                failed.push(result)
+            end if
+        end for
+
+        message = ""
+        if added.count() > 0 then message = Substitute(tr("Added {0}. They can now be picked from Who's watching."), household.JoinNames(added))
+        if failed.count() > 0
+            couldNot = Substitute(tr("Couldn't add {0}."), household.JoinNames(failed))
+            if message = "" then message = couldNot else message = message + " " + couldNot
+        end if
+        show_dialog(message, [tr("OK")], 0)
+    end sub
+
+    ' The household accounts this Roku doesn't already keep a sign-in for on this server
+    function MissingHere(users as dynamic) as object
+        result = []
+        if not isValid(users) then return result
+
+        serverId = m.global.session.server.id
+        for each user in users
+            if isValidAndNotEmpty(user.id) and user.isDisabled <> true and not household.SavedHere(user.id, serverId)
+                result.push(user)
+            end if
+        end for
+        return result
+    end function
+
+    function SavedHere(userId as string, serverId as dynamic) as boolean
+        token = registry_read("token", userId)
+        savedServer = registry_read("serverId", userId)
+        return isValidAndNotEmpty(token) and isValid(serverId) and isValid(savedServer) and savedServer = serverId
+    end function
+
+    ' Keeps a household account's sign-in the way session.user.Login keeps one with saved
+    ' credentials, which is what Who's watching lists
+    function SaveAccount(result as object) as boolean
+        if not isValidAndNotEmpty(result.userId) or not isValidAndNotEmpty(result.accessToken) then return false
+
+        name = result.name
+        if isValid(result.user) and isValidAndNotEmpty(result.user.Name) then name = result.user.Name
+        if not isValidAndNotEmpty(name) then return false
+
+        server = m.global.session.server
+        if not isValid(server) or not isValidAndNotEmpty(server.id) then return false
+
+        reg = CreateObject("roRegistrySection", result.userId)
+        reg.write("serverId", server.id)
+        if isValid(server.url) then reg.write("serverUrl", LCase(server.url))
+        reg.write("token", result.accessToken)
+        reg.write("username", name)
+        return reg.flush()
+    end function
+
+    function JoinNames(users as object) as string
+        names = []
+        for each user in users
+            if isValidAndNotEmpty(user.name) then names.push(user.name)
+        end for
+        return names.join(", ")
+    end function
+
+end namespace

@@ -5,6 +5,7 @@ import "pkg:/source/api/plexTv.bs"
 import "pkg:/source/enums/ImageType.bs"
 import "pkg:/source/enums/ItemType.bs"
 import "pkg:/source/utils/blockedContent.bs"
+import "pkg:/source/utils/household.bs"
 import "pkg:/source/utils/kidsMode.bs"
 import "pkg:/source/utils/minimalistRules.bs"
 import "pkg:/source/utils/misc.bs"
@@ -16,6 +17,8 @@ const minimumServerVersion = [10, 9, 0]
 function LoginFlow()
     'Collect Jellyfin server and user information
     start_login:
+    ' True once someone signs in by hand, rather than with a sign-in this Roku kept
+    freshSignIn = false
 
     serverUrl = get_setting("server")
     if isValid(serverUrl)
@@ -166,6 +169,7 @@ function LoginFlow()
         stopLoadingSpinner()
         passwordEntry = CreateSigninGroup(userSelected)
         SendPerformanceBeacon("AppDialogComplete") ' Roku Performance monitoring - Dialog Closed
+        freshSignIn = passwordEntry = "true"
         if passwordEntry = "backPressed"
             if shownUsers > 0
                 goto user_select
@@ -210,6 +214,8 @@ function LoginFlow()
     end if
 
     LoadUserAbilities()
+    ' A household manager signing in by hand is offered the rest of their household
+    if freshSignIn then household.OfferSetup()
     m.global.sceneManager.callFunc("clearScenes")
 
     return true

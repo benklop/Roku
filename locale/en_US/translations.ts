@@ -27,6 +27,14 @@
         <translation>Activity</translation>
     </message>
     <message>
+        <source>Add Them</source>
+        <translation>Add Them</translation>
+    </message>
+    <message>
+        <source>Added {0}. They can now be picked from Who&apos;s watching.</source>
+        <translation>Added {0}. They can now be picked from Who&apos;s watching.</translation>
+    </message>
+    <message>
         <source>Adds a button to the menu for messages sent by your server admin</source>
         <translation>Adds a button to the menu for messages sent by your server admin</translation>
     </message>
@@ -163,6 +171,14 @@
         <translation>Could not reroll those quests.</translation>
     </message>
     <message>
+        <source>Couldn&apos;t add your household to this Roku. Try again the next time you sign in.</source>
+        <translation>Couldn&apos;t add your household to this Roku. Try again the next time you sign in.</translation>
+    </message>
+    <message>
+        <source>Couldn&apos;t add {0}.</source>
+        <translation>Couldn&apos;t add {0}.</translation>
+    </message>
+    <message>
         <source>Countries watched</source>
         <translation>Countries watched</translation>
     </message>
@@ -193,6 +209,10 @@
     <message>
         <source>Decades watched</source>
         <translation>Decades watched</translation>
+    </message>
+    <message>
+        <source>Don&apos;t Ask Again</source>
+        <translation>Don&apos;t Ask Again</translation>
     </message>
     <message>
         <source>Double Credit</source>
@@ -282,6 +302,10 @@
         <source>Default Action</source>
         <extracomment>Setting for what pressing a Continue Watching or Next Up card does</extracomment>
         <translation>Default Action</translation>
+    </message>
+    <message>
+        <source>Not Now</source>
+        <translation>Not Now</translation>
     </message>
     <message>
         <source>What selecting a Continue Watching or Next Up item does</source>
@@ -750,6 +774,10 @@
         <source>Titles</source>
         <extracomment>Names a profile can wear in place of its rank</extracomment>
         <translation>Titles</translation>
+    </message>
+    <message>
+        <source>You manage {0}. Add them to this Roku so they can pick their own account without signing in?</source>
+        <translation>You manage {0}. Add them to this Roku so they can pick their own account without signing in?</translation>
     </message>
     <message>
         <source>Your records and how the server is doing</source>
