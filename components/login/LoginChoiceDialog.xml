@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A message with a column of answers, in the look of the sign in screens -->
+<component name="LoginChoiceDialog" extends="Group">
+  <children>
+    <Rectangle width="1920" height="1080" color="#0000008A" />
+    <Group id="panel">
+      <Poster id="panelFill" uri="pkg:/images/login/fill27.9.png" width="640" blendColor="#1A1A1A" />
+      <Label id="title" translation="[40, 40]" width="560" height="53" vertAlign="center" font="font:MediumSystemFont" color="#FFFFFF" />
+      <Label id="message" translation="[40, 120]" width="560" wrap="true" font="font:SmallSystemFont" color="#FFFFFF" />
+      <Group id="buttons" />
+    </Group>
+  </children>
+  <interface>
+    <field id="title" type="string" alias="title.text" />
+    <field id="message" type="string" alias="message.text" />
+    <!-- The answers, top to bottom -->
+    <field id="options" type="array" />
+    <!-- Which answer was picked, or -1 for Back -->
+    <field id="answer" type="integer" alwaysNotify="true" />
+    <function name="show" />
+  </interface>
+</component>

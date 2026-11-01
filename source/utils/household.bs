@@ -25,8 +25,17 @@ namespace household
         missing = household.MissingHere(info.users)
         if missing.count() = 0 then return
 
+        ' A password sign-in leaves the loading spinner up, and while it is up the remote is
+        ' turned off, so the dialogs would never get a key. It goes back the way it was after.
+        wasLoading = isValid(m.scene) and m.scene.isLoading = true
+        stopLoadingSpinner()
+        household.AskAndAdd(missing)
+        if wasLoading then startLoadingSpinner()
+    end sub
+
+    sub AskAndAdd(missing as object)
         message = Substitute(tr("You manage {0}. Add them to this Roku so they can pick their own account without signing in?"), household.JoinNames(missing))
-        choice = show_dialog(message, [tr("Add Them"), tr("Not Now"), tr("Don't Ask Again")], 0)
+        choice = household.Ask(message, [tr("Add Them"), tr("Not Now"), tr("Don't Ask Again")])
         if choice = 2 then set_user_setting(HOUSEHOLD_DONT_OFFER_KEY, "true")
         if choice <> 0 then return
 
@@ -40,7 +49,7 @@ namespace household
         stopLoadingSpinner()
 
         if not isValid(answer) or not isValid(answer.results)
-            show_dialog(tr("Couldn't add your household to this Roku. Try again the next time you sign in."), [tr("OK")], 0)
+            household.Ask(tr("Couldn't add your household to this Roku. Try again the next time you sign in."), [tr("OK")])
             return
         end if
 
@@ -60,8 +69,40 @@ namespace household
             couldNot = Substitute(tr("Couldn't add {0}."), household.JoinNames(failed))
             if message = "" then message = couldNot else message = message + " " + couldNot
         end if
-        show_dialog(message, [tr("OK")], 0)
+        household.Ask(message, [tr("OK")])
     end sub
+
+    ' Shows a message with its answers in the look of the sign in screens and waits for one.
+    ' Returns which answer was picked, or -1 for Back.
+    function Ask(message as string, options as object) as integer
+        scene = m.scene
+        if not isValid(scene) then return show_dialog(message, options, 0)
+
+        lastFocus = lastFocusedChild(scene)
+        dialog = CreateObject("roSGNode", "LoginChoiceDialog")
+        dialog.message = message
+        dialog.options = options
+        port = CreateObject("roMessagePort")
+        dialog.observeField("answer", port)
+        scene.appendChild(dialog)
+        dialog.callFunc("show")
+
+        answer = -1
+        while true
+            msg = wait(0, port)
+            if isNodeEvent(msg, "answer")
+                answer = msg.getData()
+                exit while
+            else if type(msg) = "roSGScreenEvent" and msg.isScreenClosed()
+                exit while
+            end if
+        end while
+
+        dialog.unobserveField("answer")
+        scene.removeChild(dialog)
+        if isValid(lastFocus) then lastFocus.setFocus(true)
+        return answer
+    end function
 
     ' The household accounts this Roku doesn't already keep a sign-in for on this server
     function MissingHere(users as dynamic) as object

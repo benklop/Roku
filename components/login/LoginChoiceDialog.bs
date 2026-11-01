@@ -1,0 +1,80 @@
+import "pkg:/source/enums/KeyCode.bs"
+
+const LOGIN_CHOICE_WIDTH = 640
+const LOGIN_CHOICE_PAD = 40
+const LOGIN_CHOICE_BUTTON_HEIGHT = 67
+const LOGIN_CHOICE_BUTTON_GAP = 13
+
+sub init()
+    m.panel = m.top.findNode("panel")
+    m.panelFill = m.top.findNode("panelFill")
+    m.titleLabel = m.top.findNode("title")
+    m.messageLabel = m.top.findNode("message")
+    m.buttonGroup = m.top.findNode("buttons")
+    m.titleLabel.font.size = 40
+    m.messageLabel.font.size = 23
+    m.buttons = []
+    m.focusIndex = 0
+end sub
+
+' Lays the dialog out for what it says, with the first answer focused
+sub show()
+    m.buttonGroup.removeChildrenIndex(m.buttonGroup.getChildCount(), 0)
+    m.buttons = []
+
+    ' Without a title the message moves up into its place
+    top = LOGIN_CHOICE_PAD
+    if m.titleLabel.text <> ""
+        m.titleLabel.visible = true
+        top = 120
+    else
+        m.titleLabel.visible = false
+    end if
+    m.messageLabel.translation = [LOGIN_CHOICE_PAD, top]
+
+    y = top + m.messageLabel.boundingRect().height + LOGIN_CHOICE_PAD
+    width = LOGIN_CHOICE_WIDTH - LOGIN_CHOICE_PAD * 2
+    for each option in m.top.options ?? []
+        button = m.buttonGroup.createChild("LoginButton")
+        button.style = "text"
+        button.height = LOGIN_CHOICE_BUTTON_HEIGHT
+        button.radius = 33
+        button.padding = 20
+        button.width = width
+        button.text = option
+        button.translation = [LOGIN_CHOICE_PAD, y]
+        m.buttons.push(button)
+        y += LOGIN_CHOICE_BUTTON_HEIGHT + LOGIN_CHOICE_BUTTON_GAP
+    end for
+
+    height = y - LOGIN_CHOICE_BUTTON_GAP + LOGIN_CHOICE_PAD
+    m.panelFill.height = height
+    m.panel.translation = [(1920 - LOGIN_CHOICE_WIDTH) / 2, (1080 - height) / 2]
+    highlight(0)
+    m.top.visible = true
+    m.top.setFocus(true)
+end sub
+
+sub highlight(index as integer)
+    if m.buttons.count() = 0 then return
+    if index < 0 then index = 0
+    if index > m.buttons.count() - 1 then index = m.buttons.count() - 1
+    m.focusIndex = index
+    for i = 0 to m.buttons.count() - 1
+        m.buttons[i].highlighted = i = index
+    end for
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if not press then return true
+    if key = KeyCode.DOWN
+        highlight(m.focusIndex + 1)
+    else if key = KeyCode.UP
+        highlight(m.focusIndex - 1)
+    else if key = KeyCode.OK
+        if m.buttons.count() > 0 then m.top.answer = m.focusIndex
+    else if key = KeyCode.BACK
+        m.top.answer = -1
+    end if
+    return true
+end function
