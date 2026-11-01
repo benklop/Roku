@@ -13,9 +13,9 @@ namespace household
 
     ' Asks the manager whether to add their household, and adds it. Does nothing for anyone who
     ' manages no household, on a server whose plugin can't add one, or when this Roku doesn't
-    ' keep sign-ins.
+    ' keep sign-ins. Jellyfin and Emby both have the plugin; Plex doesn't.
     sub OfferSetup()
-        if isEmbyServer() or isPlexServer() then return
+        if isPlexServer() then return
         if not should_save_credentials() then return
         if get_user_setting(HOUSEHOLD_DONT_OFFER_KEY) = "true" then return
 
