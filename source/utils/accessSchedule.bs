@@ -85,12 +85,68 @@ namespace accessSchedule
         utcTime = time.utcTime
         offset = time.utcOffsetSeconds
         if type(utcTime) <> "roString" and type(utcTime) <> "String" then return invalid
-        if type(offset) <> "roInt" and type(offset) <> "Integer" and type(offset) <> "roFloat" and type(offset) <> "Float" and type(offset) <> "Double" and type(offset) <> "roDouble" then return invalid
+        if not accessSchedule.IsNumber(offset) then return invalid
 
         moment = CreateObject("roDateTime")
         moment.FromISO8601String(utcTime)
         if moment.AsSeconds() = 0 then return invalid
-        return { skew: moment.AsSeconds() - deviceUtcSeconds, offset: Cint(offset) }
+        clock = { skew: moment.AsSeconds() - deviceUtcSeconds, offset: Cint(offset), nextChange: invalid, nextOffset: invalid }
+
+        ' The server's next offset change, from a plugin that reports it, so an opening after a
+        ' daylight saving change can still be turned into an instant. Left out when it's missing
+        ' or doesn't make sense.
+        change = time.nextOffsetChangeUtc
+        nextOffset = time.nextUtcOffsetSeconds
+        if (type(change) = "roString" or type(change) = "String") and accessSchedule.IsNumber(nextOffset)
+            changeMoment = CreateObject("roDateTime")
+            changeMoment.FromISO8601String(change)
+            if changeMoment.AsSeconds() > moment.AsSeconds()
+                clock.nextChange = changeMoment.AsSeconds()
+                clock.nextOffset = Cint(nextOffset)
+            end if
+        end if
+        return clock
+    end function
+
+    function IsNumber(value as dynamic) as boolean
+        kind = type(value)
+        return kind = "roInt" or kind = "Integer" or kind = "roFloat" or kind = "Float" or kind = "Double" or kind = "roDouble" or kind = "LongInteger" or kind = "roLongInteger"
+    end function
+
+    ' The instant, on this device's UTC clock, of an opening the given seconds ahead on the
+    ' server's wall clock. A wall clock that goes back an hour in between leaves an extra hour to
+    ' wait, and one that goes forward an hour less, so the server's next offset change is taken off
+    ' when the opening falls after it.
+    function OpeningAt(clock as object, wallSeconds as integer, deviceUtcSeconds as integer) as integer
+        serverAt = deviceUtcSeconds + clock.skew + wallSeconds
+        if clock.nextChange <> invalid and clock.nextOffset <> invalid
+            if serverAt >= clock.nextChange then serverAt = serverAt - (clock.nextOffset - clock.offset)
+        end if
+        return serverAt - clock.skew
+    end function
+
+    ' Where an instant falls on this device's own calendar, as { dayOffset, day, secondOfDay, at }:
+    ' how many of this device's days from now, the weekday, the time of day, and the instant itself.
+    ' The offsets are this device's offset from UTC now and at the instant, in seconds, which differ
+    ' when this device's own daylight saving changes in between.
+    function LocalOpening(at as integer, deviceUtcSeconds as integer, nowOffset as integer, atOffset as integer) as object
+        localAt = at + atOffset
+        localNow = deviceUtcSeconds + nowOffset
+        atDay = accessSchedule.DayNumber(localAt)
+        ' 1970-01-01 was a Thursday, and Sunday is 0
+        return {
+            dayOffset: atDay - accessSchedule.DayNumber(localNow),
+            day: (atDay + 4) mod 7,
+            secondOfDay: localAt - atDay * accessSchedule.SECONDS_PER_DAY,
+            at: at
+        }
+    end function
+
+    ' Days since 1970-01-01, rounding down before it too
+    function DayNumber(seconds as integer) as integer
+        day = seconds \ accessSchedule.SECONDS_PER_DAY
+        if seconds < 0 and day * accessSchedule.SECONDS_PER_DAY <> seconds then day = day - 1
+        return day
     end function
 
     ' The server's day of the week and second of the day when this device's UTC clock reads the

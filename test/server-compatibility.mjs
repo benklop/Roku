@@ -1080,10 +1080,12 @@ assert.match(scheduleWatcher, /status = accessSchedule\.Status\(m\.entries, refu
 assert.match(scheduleWatcher, /sub onRefused\(\)(?:\s+'[^\n]*)*\s+if m\.top\.userId = "" or m\.top\.blocked then return/, 'A refused request starts no look while blocked, and asks for another while one is under way');
 assert.match(scheduleWatcher, /if result\.ok[^]*?else(?:\s+'[^\n]*)*\s+startTimer\(RETRY_SECONDS\)/, 'A failed read keeps the last answer and asks again');
 assert.match(scheduleWatcher, /if m\.exempt then return\s+delay = POLL_SECONDS\s+if m\.entries\.Count\(\) = 0 then delay = IDLE_SECONDS/, 'An administrator isnt polled and a user without a schedule is polled every 15 minutes');
-assert.match(scheduleWatcher, /if m\.serverClock <> invalid\s+server = accessSchedule\.ServerWallClock\(m\.serverClock, now\.AsSeconds\(\)\)/, 'The schedule is judged on the server clock when the plugin reports it');
+assert.match(scheduleWatcher, /if m\.serverClock <> invalid\s+server = accessSchedule\.ServerWallClock\(m\.serverClock, nowUtc\)/, 'The schedule is judged on the server clock when the plugin reports it');
 assert.match(scheduleWatcher, /if result\.clockMissing then m\.askClock = false\s+if result\.clock <> invalid or result\.clockMissing then m\.serverClock = result\.clock/, 'A server without Moonfin/Time is not asked again and a failed read keeps the last clock');
 assert.match(scheduleWatcher, /m\.task\.askClock = m\.askClock and not m\.top\.blocked/, 'The server clock is not asked for once the time is up, when the server refuses it');
-process.stdout.write('PASS: access schedule wiring (10 checks)\n');
+assert.match(scheduleWatcher, /setBlocked\(true, localOpening\(status\.next, nowUtc\)\)/, 'The next opening is handed on as this device\'s calendar has it');
+assert.match(await readFile('components/accessSchedule/TimesUp.bs', 'utf8'), /date\.FromSeconds\(opening\.at\)/, 'A week out names the date of the instant itself');
+process.stdout.write('PASS: access schedule wiring (12 checks)\n');
 
 // The library header, its dialogs and its settings: Home goes home, the display choices sync, and
 // a removed card leaves every view of it

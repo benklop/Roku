@@ -110,4 +110,35 @@ sub testAccessSchedule()
     assertEqual(accessSchedule.ServerClock({}, deviceNow), invalid, "An answer without a time is no clock")
     assertEqual(accessSchedule.ServerClock(answer("2026-03-01T23:30:00Z", "x"), deviceNow), invalid, "A nonsense offset is no clock")
     assertEqual(accessSchedule.ServerClock(answer("not a time", 0), deviceNow), invalid, "A nonsense time is no clock")
+
+    ' Openings turned into instants and named on this device's calendar. The night US daylight
+    ' saving ended in 2026: New York went from UTC-4 to UTC-5 at 06:00 UTC.
+    tonight = 1793510164 ' 2026-11-01T05:16:04Z, 01:16:04 EDT
+    newYork = accessSchedule.ServerClock({ utcTime: "2026-11-01T05:16:04Z", utcOffsetSeconds: -14400, nextOffsetChangeUtc: "2026-11-01T06:00:00Z", nextUtcOffsetSeconds: -18000 }, tonight)
+    assertEqual(newYork.nextChange, 1793512800, "The next offset change is kept")
+    assertEqual(newYork.nextOffset, -18000, "With the offset after it")
+    ' 07:00 on the server's wall clock is 5h43m56s of wall clock away, and an hour more in fact
+    sevenAm = 5 * HOUR + 43 * 60 + 56
+    assertEqual(accessSchedule.OpeningAt(newYork, sevenAm, tonight), 1793534400, "An opening after the clocks go back is an hour later than the wall clock says")
+    assertEqual(accessSchedule.OpeningAt(newYork, 34 * 60 - 4, tonight), 1793512200, "An opening before the change is as the wall clock says")
+    oldPlugin = accessSchedule.ServerClock(answer("2026-11-01T05:16:04Z", -14400), tonight)
+    assertEqual(oldPlugin.nextChange, invalid, "A plugin that doesn't report the change leaves it out")
+    assertEqual(accessSchedule.OpeningAt(oldPlugin, sevenAm, tonight), 1793530800, "Without it the current offset is used")
+    ' Spring: 07:00 EDT on Sunday 2027-03-14 seen from noon EST on the Saturday
+    spring = accessSchedule.ServerClock({ utcTime: "2027-03-13T17:00:00Z", utcOffsetSeconds: -18000, nextOffsetChangeUtc: "2027-03-14T07:00:00Z", nextUtcOffsetSeconds: -14400 }, 1804957200)
+    assertEqual(accessSchedule.OpeningAt(spring, 19 * HOUR, 1804957200), 1805022000, "An opening after the clocks go forward is an hour sooner")
+    skewedTonight = accessSchedule.ServerClock({ utcTime: "2026-11-01T05:16:34Z", utcOffsetSeconds: -14400, nextOffsetChangeUtc: "2026-11-01T06:00:00Z", nextUtcOffsetSeconds: -18000 }, tonight)
+    ' The server is 30 seconds ahead, so 07:00 is 30 seconds less wall clock away
+    assertEqual(accessSchedule.OpeningAt(skewedTonight, sevenAm - 30, tonight), 1793534400 - 30, "The instant is on this device's clock, not the server's")
+    assertEqual(accessSchedule.ServerClock({ utcTime: "2026-11-01T05:16:04Z", utcOffsetSeconds: -14400, nextOffsetChangeUtc: "2026-11-01T05:00:00Z", nextUtcOffsetSeconds: -18000 }, tonight).nextChange, invalid, "A change that isn't ahead is left out")
+    assertEqual(accessSchedule.ServerClock({ utcTime: "2026-11-01T05:16:04Z", utcOffsetSeconds: -14400, nextOffsetChangeUtc: "2026-11-01T06:00:00Z", nextUtcOffsetSeconds: "x" }, tonight).nextChange, invalid, "A nonsense offset after it is left out")
+
+    ' Named for a device in Los Angeles, itself going from UTC-7 to UTC-8 that night
+    local = accessSchedule.LocalOpening(1793534400, tonight, -25200, -28800)
+    assertEqual(local.dayOffset, 1, "07:00 in New York is tomorrow at 04:00 in Los Angeles, seen from Saturday evening")
+    assertEqual(local.day, SUN, "On Sunday")
+    assertEqual(local.secondOfDay, 4 * HOUR, "At 04:00 by the device's own clock")
+    assertEqual(local.at, 1793534400, "And the instant goes with it")
+    assertEqual(accessSchedule.LocalOpening(1793512200, tonight, -14400, -14400).dayOffset, 0, "In the server's own zone an opening at 01:50 is today")
+    assertEqual(accessSchedule.LocalOpening(1793512200, tonight, 19800, 19800).secondOfDay, 11 * HOUR + 20 * 60, "And east of UTC it's 11:20 the same day")
 end sub

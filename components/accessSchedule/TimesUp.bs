@@ -60,15 +60,15 @@ function describeNext(opening as dynamic) as string
     if opening.dayOffset >= 7
         months = [tr("Jan"), tr("Feb"), tr("Mar"), tr("Apr"), tr("May"), tr("Jun"), tr("Jul"), tr("Aug"), tr("Sep"), tr("Oct"), tr("Nov"), tr("Dec")]
         date = CreateObject("roDateTime")
-        date.FromSeconds(date.AsSeconds() + opening.seconds)
+        date.FromSeconds(opening.at)
         date.ToLocalTime()
         return Substitute(tr("You can use it again on {0}, {1} {2} at {3}."), days[opening.day], months[date.GetMonth() - 1], date.GetDayOfMonth().ToStr(), time)
     end if
     return Substitute(tr("You can use it again on {0} at {1}."), days[opening.day], time)
 end function
 
-' The opening's time of day, shown the way the app's clock is. It's never converted to local time,
-' so the hours and minutes stay the opening's own.
+' The opening's time of day on this device's clock, shown the way the app's clock is. The watcher
+' has already put it in this device's zone, so it isn't converted again.
 function timeOfDayText(secondOfDay as integer) as string
     clock = CreateObject("roDateTime")
     clock.FromSeconds(secondOfDay)

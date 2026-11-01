@@ -110,8 +110,9 @@ sub apply(refused as dynamic)
     ' The server's clock when the plugin reports it, since that is what it judges the schedule
     ' against; otherwise this device's
     now = CreateObject("roDateTime")
+    nowUtc = now.AsSeconds()
     if m.serverClock <> invalid
-        server = accessSchedule.ServerWallClock(m.serverClock, now.AsSeconds())
+        server = accessSchedule.ServerWallClock(m.serverClock, nowUtc)
         day = server.day
         secondOfDay = server.secondOfDay
     else
@@ -124,7 +125,7 @@ sub apply(refused as dynamic)
     if m.exempt or not status.blocked
         setBlocked(false, invalid)
     else
-        setBlocked(true, status.next)
+        setBlocked(true, localOpening(status.next, nowUtc))
     end if
 
     ' An administrator has no schedule to enforce, so only a refused request looks again
@@ -135,6 +136,24 @@ sub apply(refused as dynamic)
     if boundary <> invalid and boundary < delay then delay = boundary
     startTimer(delay)
 end sub
+
+' The next opening as this device's calendar has it, since that is the clock the viewer reads. An
+' opening on the server's clock is turned into an instant first; one on this device's clock is
+' already local.
+function localOpening(opening as dynamic, nowUtc as integer) as dynamic
+    if type(opening) <> "roAssociativeArray" then return invalid
+    at = nowUtc + opening.seconds
+    if m.serverClock <> invalid then at = accessSchedule.OpeningAt(m.serverClock, opening.seconds, nowUtc)
+    return accessSchedule.LocalOpening(at, nowUtc, deviceOffsetAt(nowUtc), deviceOffsetAt(at))
+end function
+
+' This device's offset from UTC at an instant, from its own zone rules
+function deviceOffsetAt(utcSeconds as integer) as integer
+    clock = CreateObject("roDateTime")
+    clock.FromSeconds(utcSeconds)
+    clock.ToLocalTime()
+    return clock.AsSeconds() - utcSeconds
+end function
 
 sub startTimer(seconds as integer)
     if seconds < 1 then seconds = 1
